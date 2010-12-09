@@ -5,6 +5,11 @@ choice
 	prompt "LPC313x Platform type"
 	default MACH_EA313X
 
+config MACH_LPC_H3131
+	bool "lpc-h3131 board"
+	help
+	  Say Y here if you are using the Olimex LPC-H3131 board
+
 config MACH_EA313X
 	bool "ea313x board"
 	help

@@ -157,6 +157,28 @@
 #define IRQ_EVTR3_START        IRQ_EA_VBUS_OVRC
 #define IRQ_EVTR3_END          IRQ_EA_VBUS_OVRC
 
+#elif defined (CONFIG_MACH_LPC_H3131)
+# define IRQ_SDMMC_CD         IRQ_BOARD_START	/* SD card detect */
+
+# define NR_IRQ_BOARD         1
+
+/* now define board irq to event pin map */
+#define BOARD_IRQ_EVENT_MAP	{ \
+	CHIP_IRQ_EVENT_MAP \
+	  {IRQ_SDMMC_CD, /* EVT_mGPIO10*/ EVT_mI2STX_BCK0 , EVT_ACTIVE_LOW}, \
+	}
+/* Following defines group the board IRQs into 4 IRQ_EVNTR groups.
+   IRQ_EVT_ROUTERx IRQ is generated when event in the corresponding 
+   group triggers.
+*/
+
+#define IRQ_EVTR1_START        0
+#define IRQ_EVTR1_END          0
+#define IRQ_EVTR2_START        IRQ_SDMMC_CD
+#define IRQ_EVTR2_END          IRQ_SDMMC_CD
+#define IRQ_EVTR3_START        0
+#define IRQ_EVTR3_END          0
+
 #elif defined (CONFIG_MACH_VAL3154)
 # define IRQ_SDMMC_CD	 IRQ_BOARD_START 	/* SD card detect */
 # define NR_IRQ_BOARD	 1
