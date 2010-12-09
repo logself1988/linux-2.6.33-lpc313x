@@ -146,7 +146,7 @@ void __init lpc313x_register_i2c_devices(void)
 	/* Enable I2C1 signals */
 	GPIO_DRV_IP(IOCONF_I2C1, 0x3);
 
-#if defined (CONFIG_MACH_VAL3153) || defined (CONFIG_MACH_EA313X)
+#if defined (CONFIG_MACH_VAL3153) || defined (CONFIG_MACH_EA313X) || defined(CONFIG_MACH_LPC_H3131)
 	/* on EA and VAL boards UDA1380 is connected to I2C1
 	 * whose slave address is same as LPC313x's default slave
 	 * adress causing bus contention errors. So change the
