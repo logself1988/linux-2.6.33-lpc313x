@@ -1,3 +1,14 @@
+/*
+ * omap-rng.c - RNG driver for NXP LPC313x
+ *
+ * Author: Ingo Albrecht <prom@berlin.ccc.de>
+ *
+ * Copyright 2010 (c) Ingo Albrecht
+ *
+ * This file is licensed under  the terms of the GNU General Public
+ * License version 2. This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
