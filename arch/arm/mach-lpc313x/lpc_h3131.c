@@ -45,56 +45,20 @@
 #include <mach/i2c.h>
 #include <mach/board.h>
 
-static struct lpc313x_mci_irq_data irq_data = {
-	.irq = IRQ_SDMMC_CD,
-};
+#define GPIO_MMC_POWER GPIO_MI2STX_DATA0
+#define GPIO_USB_VBUS_ENABLE GPIO_GPIO19
 
-static int mci_get_cd(u32 slot_id)
+static int mci_init(u32 slot_id)
 {
-	return gpio_get_value(GPIO_MI2STX_BCK0);
-}
+	gpio_request(GPIO_MMC_POWER, "lpc313x_mmc.power");
+	gpio_direction_output(GPIO_MMC_POWER, 1);
 
-static irqreturn_t lpc_h3131_mci_detect_interrupt(int irq, void *data)
-{
-	struct lpc313x_mci_irq_data *pdata = data;
-
-	/* select the opposite level senstivity */
-	int level = mci_get_cd(0) ? IRQ_TYPE_LEVEL_LOW : IRQ_TYPE_LEVEL_HIGH;
-
-	set_irq_type(pdata->irq, level);
-
-	/* change the polarity of irq trigger */
-	return pdata->irq_hdlr(irq, pdata->data);
-}
-
-static int mci_init(u32 slot_id, irq_handler_t irqhdlr, void *data)
-{
-	int ret;
-	int level;
-
-	/* enable power to the slot */
-	gpio_set_value(GPIO_MI2STX_DATA0, 0);
-	/* set cd pins as GPIO pins */
-	gpio_direction_input(GPIO_MI2STX_BCK0);
-
-	/* select the opposite level senstivity */
-	level = mci_get_cd(0) ? IRQ_TYPE_LEVEL_LOW : IRQ_TYPE_LEVEL_HIGH;
-	/* set card detect irq info */
-	irq_data.data = data;
-	irq_data.irq_hdlr = irqhdlr;
-	set_irq_type(irq_data.irq, level);
-	ret = request_irq(irq_data.irq,
-			  lpc_h3131_mci_detect_interrupt,
-			  level, "mmc-cd", &irq_data);
-	/****temporary for PM testing */
-	enable_irq_wake(irq_data.irq);
-
-	return irq_data.irq;
-}
-
-static int mci_get_ro(u32 slot_id)
-{
 	return 0;
+}
+
+static void mci_exit(u32 slot_id)
+{
+	gpio_free(GPIO_MMC_POWER);
 }
 
 static int mci_get_ocr(u32 slot_id)
@@ -104,21 +68,7 @@ static int mci_get_ocr(u32 slot_id)
 
 static void mci_setpower(u32 slot_id, u32 volt)
 {
-	/* on current version of EA board the card detect
-	 * pull-up in on switched power side. So can't do
-	 * power management so use the always enable power 
-	 * jumper.
-	 */
-}
-
-static int mci_get_bus_wd(u32 slot_id)
-{
-	return 4;
-}
-
-static void mci_exit(u32 slot_id)
-{
-	free_irq(irq_data.irq, &irq_data);
+	gpio_set_value(GPIO_MMC_POWER, volt ? 0 : 1);
 }
 
 static struct resource lpc313x_mci_resources[] = {
@@ -138,12 +88,16 @@ static struct lpc313x_mci_board lpc_h3131_mci_platform_data = {
 	.num_slots = 1,
 	.detect_delay_ms = 250,
 	.init = mci_init,
-	.get_ro = mci_get_ro,
-	.get_cd = mci_get_cd,
-	.get_ocr = mci_get_ocr,
-	.get_bus_wd = mci_get_bus_wd,
-	.setpower = mci_setpower,
 	.exit = mci_exit,
+	.get_ocr = mci_get_ocr,
+	.setpower = mci_setpower,
+	.slot = {
+		[0] = {
+			.bus_width = 4,
+			.detect_pin = -1,
+			.wp_pin = -1,
+		},
+	},
 };
 
 static u64 mci_dmamask = 0xffffffffUL;
@@ -179,15 +133,35 @@ static struct resource lpc313x_nand_resources[] = {
 
 #define BLK_SIZE (2048 * 64)
 static struct mtd_partition lpc_h3131_nand0_partitions[] = {
-	/* The EA3131 board uses the following block scheme:
+	/* The LPC_H3131 board uses the following block scheme:
 	   128K: Blocks 0   - 0    - LPC31xx info and bad block table
-	   384K: Blocks 1   - 3    - Apex bootloader
-	   256K: Blocks 4   - 5    - Apex environment
-	   4M:   Blocks 6   - 37   - Kernel image
-	   16M:  Blocks 38  - 165  - Ramdisk image (if used)
-	   ???:  Blocks 166 - end  - Root filesystem/storage */
+	   384K: Blocks 1   - 3    - loader image
+	   256K: Blocks 4   - 5    - loader environment
+	   4M:   Blocks 6   - 37   - kernel
+	   16M:  Blocks 38  - 165  - ramdisk
+	   ???:  Blocks 166 - end  - root filesystem / ubi */
 	{
-	 .name = "lpc313x-rootfs",
+	 .name = "info",
+	 .offset = (BLK_SIZE * 0),
+	 .size = (BLK_SIZE * 1)},
+	{
+	 .name = "loader",
+	 .offset = (BLK_SIZE * 1),
+	 .size = (BLK_SIZE * 3)},
+	{
+	 .name = "environment",
+	 .offset = (BLK_SIZE * 4),
+	 .size = (BLK_SIZE * 2)},
+	{
+	 .name = "kernel",
+	 .offset = (BLK_SIZE * 6),
+	 .size = (BLK_SIZE * 32)},
+	{
+	 .name = "ramdisk",
+	 .offset = (BLK_SIZE * 38),
+	 .size = (BLK_SIZE * 128)},
+	{
+	 .name = "rootfs",
 	 .offset = (BLK_SIZE * 166),
 	 .size = MTDPART_SIZ_FULL},
 };
@@ -255,7 +229,7 @@ static void spi_set_cs_state(int cs_num, int state)
 	(void)cs_num;
 
 	/* Set GPO state for CS0 */
-	lpc313x_gpio_set_value(GPIO_SPI_CS_OUT0, state);
+	gpio_set_value(GPIO_SPI_CS_OUT0, state);
 }
 
 struct lpc313x_spics_cfg lpc313x_stdspics_cfg[] = {
@@ -286,6 +260,22 @@ static struct platform_device lpc313x_spi_device = {
 };
 
 /* If both SPIDEV and MTD data flash are enabled with the same chip select, only 1 will work */
+#if defined(CONFIG_MTD_DATAFLASH)
+/* MTD Data FLASH driver registration */
+static int __init lpc313x_spimtd_register(void)
+{
+	struct spi_board_info info = {
+		.modalias = "mtd_dataflash",
+		.max_speed_hz = 30000000,
+		.bus_num = 0,
+		.chip_select = 0,
+	};
+
+	return spi_register_board_info(&info, 1);
+}
+
+arch_initcall(lpc313x_spimtd_register);
+#else
 #if defined(CONFIG_SPI_SPIDEV)
 /* SPIDEV driver registration */
 static int __init lpc313x_spidev_register(void)
@@ -302,23 +292,35 @@ static int __init lpc313x_spidev_register(void)
 
 arch_initcall(lpc313x_spidev_register);
 #endif
-
-#if defined(CONFIG_MTD_DATAFLASH)
-/* MTD Data FLASH driver registration */
-static int __init lpc313x_spimtd_register(void)
-{
-	struct spi_board_info info = {
-		.modalias = "mtd_dataflash",
-		.max_speed_hz = 30000000,
-		.bus_num = 0,
-		.chip_select = 0,
-	};
-
-	return spi_register_board_info(&info, 1);
-}
-
-arch_initcall(lpc313x_spimtd_register);
 #endif
+
+#endif
+
+#ifdef CONFIG_LEDS_GPIO_PLATFORM
+static struct gpio_led leds[] = {
+    {
+	.name   = "led-1:yellow",
+	.default_trigger = "mmc0",
+	.gpio   = GPIO_GPIO17,
+    }, {
+	.name   = "led-2:green",
+	.default_trigger = "heartbeat",
+	.gpio   = GPIO_GPIO18,
+    },
+};
+
+static struct gpio_led_platform_data leds_pdata = {
+    .num_leds  = ARRAY_SIZE(leds),
+    .leds      = leds,
+};
+
+static struct platform_device leds_device = {
+    .name   = "leds-gpio",
+    .id     = -1,
+    .dev    = {
+	.platform_data = &leds_pdata,
+    },
+};
 #endif
 
 static struct platform_device *devices[] __initdata = {
@@ -328,6 +330,9 @@ static struct platform_device *devices[] __initdata = {
 #endif
 #if defined(CONFIG_SPI_LPC313X)
 	&lpc313x_spi_device,
+#endif
+#if defined (CONFIG_LEDS_GPIO_PLATFORM)
+        &leds_device,
 #endif
 };
 
@@ -379,13 +384,13 @@ static void __init lpc_h3131_map_io(void)
 void lpc313x_vbus_power(int enable)
 {
 	if (enable) {
-		printk(KERN_INFO "enabling USB host vbus_power\n");
-		gpio_set_value(GPIO_GPIO19, 0);
+		gpio_set_value(GPIO_USB_VBUS_ENABLE, 0);
 	} else {
-		printk(KERN_INFO "disabling USB host vbus_power\n");
-		gpio_set_value(GPIO_GPIO19, 1);
+		gpio_set_value(GPIO_USB_VBUS_ENABLE, 1);
 	}
 }
+
+EXPORT_SYMBOL(lpc313x_vbus_power);
 
 #if defined(CONFIG_MACH_LPC_H3131)
 MACHINE_START(LPC_H3131, "Olimex LPC-H3131")

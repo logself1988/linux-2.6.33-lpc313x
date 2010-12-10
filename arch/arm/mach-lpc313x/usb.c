@@ -260,7 +260,9 @@ int __init usbotg_init(void)
 		/* set thw I2SRX_WS0 pin as GPIO_IN for vbus overcurrent flag */
 		gpio_direction_input(GPIO_I2SRX_WS0);
 		lpc313x_usb_brd.vbus_ovrc_irq = IRQ_EA_VBUS_OVRC;
-
+#elif defined(CONFIG_MACH_LPC_H3131)
+		gpio_direction_input(GPIO_GPIO20);
+		lpc313x_usb_brd.vbus_ovrc_irq = IRQ_LPC_H3131_VBUS_OVRC;
 #else
 #ifdef IRQ_VBUS_OVRC
 		lpc313x_usb_brd.vbus_ovrc_irq = IRQ_VBUS_OVRC;
