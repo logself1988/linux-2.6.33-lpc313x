@@ -187,7 +187,27 @@ static struct mtd_partition lpc_h3131_nand0_partitions[] = {
 	   16M:  Blocks 38  - 165  - Ramdisk image (if used)
 	   ???:  Blocks 166 - end  - Root filesystem/storage */
 	{
-	 .name = "lpc313x-rootfs",
+	 .name = "info",
+	 .offset = (BLK_SIZE * 0),
+	 .size = (BLK_SIZE * 1)},
+	{
+	 .name = "loader",
+	 .offset = (BLK_SIZE * 1),
+	 .size = (BLK_SIZE * 3)},
+	{
+	 .name = "environment",
+	 .offset = (BLK_SIZE * 4),
+	 .size = (BLK_SIZE * 2)},
+	{
+	 .name = "kernel",
+	 .offset = (BLK_SIZE * 6),
+	 .size = (BLK_SIZE * 32)},
+	{
+	 .name = "ramdisk",
+	 .offset = (BLK_SIZE * 38),
+	 .size = (BLK_SIZE * 128)},
+	{
+	 .name = "rootfs",
 	 .offset = (BLK_SIZE * 166),
 	 .size = MTDPART_SIZ_FULL},
 };
