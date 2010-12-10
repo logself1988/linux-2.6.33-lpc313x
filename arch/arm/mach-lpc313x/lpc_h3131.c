@@ -379,13 +379,15 @@ static void __init lpc_h3131_map_io(void)
 void lpc313x_vbus_power(int enable)
 {
 	if (enable) {
-		printk(KERN_INFO "enabling USB host vbus_power\n");
+		//printk(KERN_INFO "enabling USB host vbus_power\n");
 		gpio_set_value(GPIO_GPIO19, 0);
 	} else {
-		printk(KERN_INFO "disabling USB host vbus_power\n");
+		//printk(KERN_INFO "disabling USB host vbus_power\n");
 		gpio_set_value(GPIO_GPIO19, 1);
 	}
 }
+
+EXPORT_SYMBOL(lpc313x_vbus_power);
 
 #if defined(CONFIG_MACH_LPC_H3131)
 MACHINE_START(LPC_H3131, "Olimex LPC-H3131")
