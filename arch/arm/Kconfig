@@ -733,6 +733,8 @@ config ARCH_LPC313X
 	select CPU_ARM926T
 	select GENERIC_TIME
 	select GENERIC_CLOCKEVENTS
+	select GENERIC_GPIO
+	select ARCH_REQUIRE_GPIOLIB
 	help
 	  Say Y here for systems based on one of the NXP LPC313x & LPC315x
 	  System on a Chip processors.  These CPUs include an ARM926EJS
