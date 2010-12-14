@@ -45,13 +45,10 @@
 #include <mach/board.h>
 
 /* mci platform functions */
-static int mci_init(u32 slot_id, irq_handler_t , void *);
-static int mci_get_ro(u32 slot_id);
-static int mci_get_cd(u32 slot_id);
+static int mci_init(u32 slot_id);
+static void mci_exit(u32 slot_id);
 static int mci_get_ocr(u32 slot_id);
 static void mci_setpower(u32 slot_id, u32 volt);
-static void mci_exit(u32 slot_id);
-static int mci_get_bus_wd(u32 slot_id);
 
 static struct resource lpc313x_mci_resources[] = {
 	[0] = {
@@ -59,22 +56,21 @@ static struct resource lpc313x_mci_resources[] = {
 		.end	= IO_SDMMC_PHYS + IO_SDMMC_SIZE,
 		.flags	= IORESOURCE_MEM,
 	},
-	[1] = {
-		.start	= IRQ_MCI,
-		.end	= IRQ_MCI,
-		.flags	= IORESOURCE_IRQ,
-	},
 };
 static struct lpc313x_mci_board val3154_mci_platform_data = {
 	.num_slots		= 1,
 	.detect_delay_ms	= 250,
 	.init 			= mci_init,
-	.get_ro			= mci_get_ro,
-	.get_cd 		= mci_get_cd,
 	.get_ocr		= mci_get_ocr,
-	.get_bus_wd		= mci_get_bus_wd,
 	.setpower 		= mci_setpower,
-	.exit			= mci_exit,
+	.slot = {
+		[0] = {
+			.bus_width = 4,
+			.detect_pin = GPIO_MI2STX_BCK0,
+			.detect_is_active_high = 1,
+			.wp_pin = -1,
+		},
+	},
 };
 
 static u64 mci_dmamask = 0xffffffffUL;
@@ -201,49 +197,16 @@ static struct lpc313x_mci_irq_data irq_data = {
 	.irq = IRQ_SDMMC_CD,
 };
 
-static irqreturn_t val3154_mci_detect_interrupt(int irq, void *data)
+static int mci_init(u32 slot_id)
 {
-	struct lpc313x_mci_irq_data	*pdata = data;
-
-	/* select the opposite level senstivity */
-	int level = mci_get_cd(0)?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH;
-
-	set_irq_type(pdata->irq, level);
-
-	/* change the polarity of irq trigger */
-	return pdata->irq_hdlr(irq, pdata->data);
-}
-
-static int mci_init(u32 slot_id, irq_handler_t irqhdlr, void *data)
-{
-	int ret;
-	/* select the opposite level senstivity */
-	int level = mci_get_cd(0)?IRQ_TYPE_LEVEL_LOW:IRQ_TYPE_LEVEL_HIGH;
-
-	/* set slot_select, cd and wp pins as GPIO pins */
-	gpio_direction_input(GPIO_MI2STX_BCK0);
-
-	/* set card detect irq info */
-	irq_data.data = data;
-	irq_data.irq_hdlr = irqhdlr;
-	set_irq_type(irq_data.irq, level);
-	ret = request_irq(irq_data.irq,
-			val3154_mci_detect_interrupt,
-			level,
-			"mmc-cd", 
-			&irq_data);
-	return ret;
-
-}
-
-static int mci_get_ro(u32 slot_id)
-{
+	gpio_request(GPIO_MI2STX_DATA0, "lpc313x_mmc.power");
+	gpio_direction_output(GPIO_MI2STX_DATA0);
 	return 0;
 }
 
-static int mci_get_cd(u32 slot_id)
+static void mci_exit(u32 slot_id)
 {
-	return gpio_get_value(GPIO_MI2STX_BCK0);
+	gpio_free(GPIO_MI2STX_DATA0);
 }
 
 static int mci_get_ocr(u32 slot_id)
@@ -253,16 +216,7 @@ static int mci_get_ocr(u32 slot_id)
 
 static void mci_setpower(u32 slot_id, u32 volt)
 {
-	gpio_set_value(GPIO_MI2STX_DATA0, 0);
-}
-static int mci_get_bus_wd(u32 slot_id)
-{
-	return 4;
-}
-
-static void mci_exit(u32 slot_id)
-{
-	free_irq(irq_data.irq, &irq_data);
+	gpio_set_value(GPIO_MI2STX_DATA0, volt ? 0 : 1);
 }
 
 void lpc313x_vbus_power(int enable)
