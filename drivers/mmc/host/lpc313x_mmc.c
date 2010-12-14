@@ -36,6 +36,7 @@
 #include <linux/stat.h>
 #include <linux/delay.h>
 #include <linux/irq.h>
+#include <linux/gpio.h>
 
 #include "lpc313x_mmc.h"
 #include <mach/irqs.h>
@@ -124,6 +125,10 @@ struct lpc313x_mci_slot {
 #define LPC313x_MMC_SHUTDOWN		2
 	int			id;
 	int			irq;
+
+	int			detect_pin;
+	int			wp_pin;
+	int			detect_is_active_high;
 
 	struct timer_list	detect_timer;
 };
@@ -707,10 +712,9 @@ static int lpc313x_mci_get_ro(struct mmc_host *mmc)
 {
 	int			read_only = -ENOSYS;
 	struct lpc313x_mci_slot	*slot = mmc_priv(mmc);
-	struct lpc313x_mci_board *brd = slot->host->pdata;
 
-	if (brd->get_ro != NULL) {
-		read_only = brd->get_ro(slot->id);
+	if (gpio_is_valid(slot->wp_pin)) {
+		read_only = gpio_get_value(slot->wp_pin);
 		dev_dbg(&mmc->class_dev, "card is %s\n",
 				read_only ? "read-only" : "read-write");
 	}
@@ -723,10 +727,13 @@ static int lpc313x_mci_get_cd(struct mmc_host *mmc)
 {
 	int			present = -ENOSYS;
 	struct lpc313x_mci_slot	*slot = mmc_priv(mmc);
-	struct lpc313x_mci_board *brd = slot->host->pdata;
 
-	present = !brd->get_cd(slot->id);
-	dev_vdbg(&mmc->class_dev, "card is %spresent\n", present ? "" : "not ");
+	if (gpio_is_valid(slot->detect_pin)) {
+		present = !(gpio_get_value(slot->detect_pin) ^
+			    slot->detect_is_active_high);
+		dev_dbg(&mmc->class_dev, "card is %spresent\n",
+				present ? "" : "not ");
+	}
 
 	return present;
 }
@@ -1218,7 +1225,7 @@ static void lpc313x_mci_detect_change(unsigned long slot_data)
 
 	host = slot->host;
 	/*
-	 * lpc313x_mci_cleanup_slot() sets the ATMCI_SHUTDOWN flag before
+	 * lpc313x_mci_cleanup_slot() sets the LPC313x_MMC_SHUTDOWN flag before
 	 * freeing the interrupt. We must not re-enable the interrupt
 	 * if it has been freed, and if we're shutting down, it
 	 * doesn't really matter whether the card is present or not.
@@ -1227,9 +1234,11 @@ static void lpc313x_mci_detect_change(unsigned long slot_data)
 	if (test_bit(LPC313x_MMC_SHUTDOWN, &slot->flags))
 		return;
 
-	enable_irq(slot->irq);
-	present = !host->pdata->get_cd(slot->id);
+	enable_irq(gpio_to_irq(slot->detect_pin));
+	present = !(gpio_get_value(slot->detect_pin) ^
+		    slot->detect_is_active_high);
 	present_old = test_bit(LPC313x_MMC_CARD_PRESENT, &slot->flags);
+
 	dev_vdbg(&slot->mmc->class_dev, "detect change: %d (was %d)\n",
 			present, present_old);
 
@@ -1327,7 +1336,7 @@ static irqreturn_t lpc313x_mci_detect_interrupt(int irq, void *dev_id)
 }
 
 static int __init
-lpc313x_mci_init_slot(struct lpc313x_mci *host, unsigned int id)
+lpc313x_mci_init_slot(struct lpc313x_mci *host, int id, struct lpc313x_mci_slot_data *slot_data)
 {
 	struct mmc_host			*mmc;
 	struct lpc313x_mci_slot		*slot;
@@ -1341,6 +1350,9 @@ lpc313x_mci_init_slot(struct lpc313x_mci *host, unsigned int id)
 	slot->id = id;
 	slot->mmc = mmc;
 	slot->host = host;
+	slot->detect_pin = slot_data->detect_pin;
+	slot->wp_pin = slot_data->wp_pin;
+	slot->detect_is_active_high = slot_data->detect_is_active_high;
 
 	mmc->ops = &lpc313x_mci_ops;
 	mmc->f_min = DIV_ROUND_UP(host->bus_hz, 510);
@@ -1367,24 +1379,55 @@ lpc313x_mci_init_slot(struct lpc313x_mci *host, unsigned int id)
 	mmc->max_seg_size = mmc->max_req_size;
 
 	/* call board init */
-	slot->irq = host->pdata->init(id, lpc313x_mci_detect_interrupt, slot);
+	slot->irq = host->pdata->init(id);
+
 	/* Assume card is present initially */
-	if(!host->pdata->get_cd(id))
-		set_bit(LPC313x_MMC_CARD_PRESENT, &slot->flags);
-	else
-		clear_bit(LPC313x_MMC_CARD_PRESENT, &slot->flags);
+	set_bit(LPC313x_MMC_CARD_PRESENT, &slot->flags);
+	if (gpio_is_valid(slot->detect_pin)) {
+		if (gpio_request(slot->detect_pin, "mmc_detect")) {
+			dev_dbg(&mmc->class_dev, "no detect pin available\n");
+			slot->detect_pin = -EBUSY;
+		} else if (gpio_get_value(slot->detect_pin) ^
+				slot->detect_is_active_high) {
+			clear_bit(LPC313x_MMC_CARD_PRESENT, &slot->flags);
+		}
+	}
+
+	if (!gpio_is_valid(slot->detect_pin))
+		mmc->caps |= MMC_CAP_NEEDS_POLL;
+
+	if (gpio_is_valid(slot->wp_pin)) {
+		if (gpio_request(slot->wp_pin, "mmc_wp")) {
+			dev_dbg(&mmc->class_dev, "no WP pin available\n");
+			slot->wp_pin = -EBUSY;
+		}
+	}
 
 	host->slot[id] = slot;
 	mmc_add_host(mmc);
 
+	if (gpio_is_valid(slot->detect_pin)) {
+		int ret;
+
+		setup_timer(&slot->detect_timer, lpc313x_mci_detect_change,
+				(unsigned long)slot);
+
+		ret = request_irq(gpio_to_irq(slot->detect_pin),
+				lpc313x_mci_detect_interrupt,
+				IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+				"mmc-detect", slot);
+		if (ret) {
+			dev_dbg(&mmc->class_dev,
+				"could not request IRQ %d for detect pin\n",
+				gpio_to_irq(slot->detect_pin));
+			gpio_free(slot->detect_pin);
+			slot->detect_pin = -EBUSY;
+		}
+	}
 
 #if defined (CONFIG_DEBUG_FS)
 	lpc313x_mci_init_debugfs(slot);
 #endif
-
-	/* Create card detect handler thread for the slot */
-	setup_timer(&slot->detect_timer, lpc313x_mci_detect_change,
-			(unsigned long)slot);
 
 	return 0;
 }
@@ -1392,15 +1435,23 @@ lpc313x_mci_init_slot(struct lpc313x_mci *host, unsigned int id)
 static void lpc313x_mci_cleanup_slot(struct lpc313x_mci_slot *slot,
 		unsigned int id)
 {
-	/* Shutdown detect IRQ and kill detect thread */
-	if (slot->host->pdata->exit)
-		slot->host->pdata->exit(id);
-	del_timer_sync(&slot->detect_timer);
-
 	/* Debugfs stuff is cleaned up by mmc core */
+
 	set_bit(LPC313x_MMC_SHUTDOWN, &slot->flags);
 	smp_wmb();
+
 	mmc_remove_host(slot->mmc);
+
+	if (gpio_is_valid(slot->detect_pin)) {
+		int pin = slot->detect_pin;
+
+		free_irq(gpio_to_irq(pin), slot);
+		del_timer_sync(&slot->detect_timer);
+		gpio_free(pin);
+	}
+	if (gpio_is_valid(slot->wp_pin))
+		gpio_free(slot->wp_pin);
+
 	slot->host->slot[id] = NULL;
 	mmc_free_host(slot->mmc);
 }
@@ -1436,8 +1487,7 @@ static int lpc313x_mci_probe(struct platform_device *pdev)
 		goto err_freehost;
 	}
 
-	if (((pdata->num_slots > 1) && !(pdata->select_slot)) ||
-	     !(pdata->get_ro) || !(pdata->get_cd) || !(pdata->init)) {
+	if (((pdata->num_slots > 1) && !(pdata->select_slot)) || !(pdata->init)) {
 		dev_err(&pdev->dev, "Platform data wrong\n");
 		ret = -ENODEV;
 		goto err_freehost;
@@ -1526,7 +1576,7 @@ static int lpc313x_mci_probe(struct platform_device *pdev)
 
 	/* We need at least one slot to succeed ####pd####*/
 	for (i = 0; i < host->pdata->num_slots; i++) {
-		ret = lpc313x_mci_init_slot(host, i);
+		ret = lpc313x_mci_init_slot(host, i, &host->pdata->slot[i]);
 		if (ret) {
 		    ret = -ENODEV;
 		    goto err_init_slot;

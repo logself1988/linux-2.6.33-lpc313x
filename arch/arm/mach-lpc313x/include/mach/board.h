@@ -123,29 +123,31 @@ struct lpc313x_spi_cfg {
 /*
  * the board-type specific routines
  */
+
+struct lpc313x_mci_slot_data {
+	unsigned int		bus_width;
+	int			detect_pin;
+	int			wp_pin;
+	bool			detect_is_active_high;
+};
+
 struct lpc313x_mci_board {
 	u32 num_slots;
 	u32 detect_delay_ms; /* delay in mS before detecting cards after interrupt */
-	int (*init)(u32 slot_id, irq_handler_t , void *);
-	int (*get_ro)(u32 slot_id);
-	int (*get_cd)(u32 slot_id);
+	int (*init)(u32 slot_id);
+
 	int (*get_ocr)(u32 slot_id);
-	int (*get_bus_wd)(u32 slot_id);
+
 	/*
 	 * Enable power to selected slot and set voltage to desired level.
 	 * Voltage levels are specified using MMC_VDD_xxx defines defined
 	 * in linux/mmc/host.h file.
 	 */
 	void (*setpower)(u32 slot_id, u32 volt);
-	void (*exit)(u32 slot_id);
-	void (*select_slot)(u32 slot_id);
-};
 
-struct lpc313x_mci_irq_data {
-	u32 irq;
-	irq_handler_t irq_hdlr;
-	void* data;
+	void (*select_slot)(u32 slot_id);
+
+	struct lpc313x_mci_slot_data slot[MAX_MCI_SLOTS];
 };
 
 #endif /*__MACH_BOARD_H*/
-
