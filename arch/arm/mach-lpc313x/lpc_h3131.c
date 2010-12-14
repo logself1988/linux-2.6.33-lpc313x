@@ -51,7 +51,7 @@ static struct lpc313x_mci_irq_data irq_data = {
 
 static int mci_get_cd(u32 slot_id)
 {
-	return gpio_get_value(GPIO_MI2STX_BCK0);
+	return lpc313x_gpio_get_value(GPIO_MI2STX_BCK0);
 }
 
 static irqreturn_t lpc_h3131_mci_detect_interrupt(int irq, void *data)
@@ -73,9 +73,9 @@ static int mci_init(u32 slot_id, irq_handler_t irqhdlr, void *data)
 	int level;
 
 	/* enable power to the slot */
-	gpio_set_value(GPIO_MI2STX_DATA0, 0);
+	lpc313x_gpio_set_value(GPIO_MI2STX_DATA0, 0);
 	/* set cd pins as GPIO pins */
-	gpio_direction_input(GPIO_MI2STX_BCK0);
+	lpc313x_gpio_direction_input(GPIO_MI2STX_BCK0);
 
 	/* select the opposite level senstivity */
 	level = mci_get_cd(0) ? IRQ_TYPE_LEVEL_LOW : IRQ_TYPE_LEVEL_HIGH;
@@ -341,8 +341,38 @@ arch_initcall(lpc313x_spimtd_register);
 #endif
 #endif
 
+#ifdef CONFIG_LEDS_GPIO
+static struct gpio_led leds[] = {
+    {
+	.name   = "led-1:yellow",
+	.default_trigger = "mmc0",
+	.gpio   = 11,
+    }, {
+	.name   = "led-2:green",
+	.default_trigger = "heartbeat",
+	.gpio   = 12,
+    },
+};
+
+static struct gpio_led_platform_data led_pdata = {
+    .num_leds  = ARRAY_SIZE(leds),
+    .leds      = leds,
+};
+
+static struct platform_device led_device = {
+    .name   = "leds-gpio",
+    .id     = -1,
+    .dev    = {
+	.platform_data = &led_pdata,
+    },
+};
+#endif
+
 static struct platform_device *devices[] __initdata = {
-	&lpc313x_mci_device,
+#if defined (CONFIG_LEDS_GPIO_PLATFORM)
+        &led_device,
+#endif
+        &lpc313x_mci_device,
 #if defined (CONFIG_MTD_NAND_LPC313X)
 	&lpc313x_nand_device,
 #endif
@@ -377,6 +407,8 @@ static struct map_desc lpc_h3131_io_desc[] __initdata = {
 static struct i2c_board_info lpc_h3131_i2c_devices[] __initdata = {
 };
 
+extern void __init lpc313x_gpiolib_init();
+
 static void __init lpc_h3131_init(void)
 {
 	lpc313x_init();
@@ -388,6 +420,28 @@ static void __init lpc_h3131_init(void)
 	i2c_register_board_info(0, lpc_h3131_i2c_devices,
 				ARRAY_SIZE(lpc_h3131_i2c_devices));
 
+	lpc313x_gpiolib_init();
+
+	/* boot mode selector */
+	gpio_request(0, "boot1");
+	gpio_direction_input(0);
+	gpio_export(0, 0);
+	gpio_request(1, "boot0");
+	gpio_direction_input(1);
+	gpio_export(1, 0);
+	gpio_request(2, "boot2");
+	gpio_direction_input(1);
+	gpio_export(2, 0);
+
+	/* primary GPIO */
+	gpio_request(3, "ext2-21");
+	gpio_request(4, "ext2-20");
+	gpio_request(5, "ext2-19");
+	gpio_request(6, "ext2-18");
+	gpio_request(7, "ext2-17");
+	gpio_request(8, "ext2-16");
+	gpio_request(9, "ext2-15");
+	gpio_request(10, "ext2-14");
 }
 
 static void __init lpc_h3131_map_io(void)
@@ -400,10 +454,10 @@ void lpc313x_vbus_power(int enable)
 {
 	if (enable) {
 		//printk(KERN_INFO "enabling USB host vbus_power\n");
-		gpio_set_value(GPIO_GPIO19, 0);
+		lpc313x_gpio_set_value(GPIO_GPIO19, 0);
 	} else {
 		//printk(KERN_INFO "disabling USB host vbus_power\n");
-		gpio_set_value(GPIO_GPIO19, 1);
+		lpc313x_gpio_set_value(GPIO_GPIO19, 1);
 	}
 }
 

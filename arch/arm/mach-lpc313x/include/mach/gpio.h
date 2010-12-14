@@ -197,45 +197,47 @@ static inline void lpc313x_gpio_set_value(unsigned gpio, int value)
 	raw_local_irq_restore(flags);
 }
 
+#define IOCONF_FAST_GPIO IOCONF_GPIO
+#define NUM_FAST_GPIO 15
 
-/*-------------------------------------------------------------------------*/
-
-/* Wrappers for "new style" GPIO calls. These calls LPC313x specific versions
- * to allow future extension of GPIO logic.
-*/
-static inline  int gpio_direction_input(unsigned gpio)
-{
-	return lpc313x_gpio_direction_input(gpio);
-}
-
-static inline int gpio_direction_output(unsigned gpio, int value)
-{
-	lpc313x_gpio_set_value(gpio, value);
-	return 0;
-}
+#include <asm-generic/gpio.h>
 
 static inline int gpio_get_value(unsigned gpio)
 {
-	return lpc313x_gpio_get_value(gpio);
+    if(gpio < NUM_FAST_GPIO) {
+	unsigned bit = (1 << gpio);
+	if(GPIO_STATE(IOCONF_FAST_GPIO) & bit) {
+	    return 1;
+	} else {
+	    return 0;
+	}
+    } else {
+	return __gpio_get_value(gpio);
+    }
 }
 
 static inline void gpio_set_value(unsigned gpio, int value)
 {
-	lpc313x_gpio_set_value(gpio, value);
+    if(gpio < NUM_FAST_GPIO) {
+	unsigned bit = (1 << gpio);
+	if(value) {
+		GPIO_M0_SET(IOCONF_FAST_GPIO) = bit;
+	} else {
+		GPIO_M0_RESET(IOCONF_FAST_GPIO) = bit;
+	}
+    } else {
+	__gpio_set_value(gpio, value);
+    }
 }
-static inline int gpio_request(unsigned gpio, const char *label)
-{
-	return 0;
-}
-/**
- * FIXME: It is assumed that freeing a gpio pin
- * will set it to the default mode. eh?
- **/
-static inline void gpio_free( unsigned gpio)
-{
-	lpc313x_gpio_ip_driven(gpio);
-}
-int gpio_is_valid(unsigned pin);
 
+static inline int gpio_cansleep(unsigned gpio)
+{
+    return __gpio_cansleep(gpio);
+}
+
+static inline int gpio_to_irq(unsigned gpio)
+{
+    return __gpio_to_irq(gpio);
+}
 
 #endif /*_LPC313X_GPIO_H*/
