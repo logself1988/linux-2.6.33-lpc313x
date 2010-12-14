@@ -189,9 +189,9 @@ static void lpc313x_vbusen_timer(unsigned long data)
 	struct lpc313x_usb_board_t* brd = (struct lpc313x_usb_board_t*)data;
 	/* enable VBUS power */
 	lpc313x_vbus_power(1);
-	msleep(2);
+	/* msleep(2); */
 	/* enable the VBUS overcurrent monitoring IRQ */
-	enable_irq(brd->vbus_ovrc_irq);
+	/* enable_irq(brd->vbus_ovrc_irq); */
 }
 
 
