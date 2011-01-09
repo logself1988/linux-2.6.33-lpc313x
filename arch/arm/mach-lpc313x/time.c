@@ -48,10 +48,6 @@ struct lpc313x_timer {
 	int clk_id;
 	/* irq number */
 	int irq;
-#if 0
-	/* mapped base */
-	void __iomem *io_base;
-#endif
 
 	char *descr;
 
@@ -64,7 +60,7 @@ struct lpc313x_timer {
 #define TIMER_IO_SIZE (SZ_1K)
 
 struct lpc313x_timer timers[] = {
-	{.phys_base = TIMER0_PHYS, .clk_id = CGU_SB_TIMER0_PCLK_ID, .irq = IRQ_TIMER0, .reserved = 1 },
+	{.phys_base = TIMER0_PHYS, .clk_id = CGU_SB_TIMER0_PCLK_ID, .irq = IRQ_TIMER0 },
 	{.phys_base = TIMER1_PHYS, .clk_id = CGU_SB_TIMER1_PCLK_ID, .irq = IRQ_TIMER1 },
 	{.phys_base = TIMER2_PHYS, .clk_id = CGU_SB_TIMER2_PCLK_ID, .irq = IRQ_TIMER2 },
 	{.phys_base = TIMER3_PHYS, .clk_id = CGU_SB_TIMER3_PCLK_ID, .irq = IRQ_TIMER3 },
@@ -83,12 +79,6 @@ void lpc313x_generic_timer_init(void)
 			t->used = 1;
 			continue;
 		}
-
-#if 0
-		/* remap io region */
-		t->io_base = ioremap(t->phys_base, TIMER_IO_SIZE);
-		BUG_ON(!t->io_base);
-#endif
 
 		/* enable the clock of the timer */
 		cgu_clk_en_dis(t->clk_id, 1);
@@ -134,6 +124,16 @@ void lpc313x_generic_timer_free(struct lpc313x_timer *t)
 
 	t->descr = NULL;
 	t->used = 0;
+}
+
+int lpc313x_generic_timer_get_irq(struct lpc313x_timer *t)
+{
+	return t->irq;
+}
+
+void lpc313x_generic_timer_ack_irq(struct lpc313x_timer *t)
+{
+	TIMER_CLEAR(t->phys_base) = 0;
 }
 
 u32 lpc313x_generic_timer_get_infreq(struct lpc313x_timer *t)
@@ -254,8 +254,12 @@ void lpc313x_timer_init_debugfs(void) {}
 
 static irqreturn_t lpc313x_timer_interrupt(int irq, void *dev_id)
 {
-	TIMER_CLEAR(TIMER0_PHYS) = 0;
+	struct lpc313x_timer *t = (struct lpc313x_timer *)dev_id;
+
+	lpc313x_generic_timer_ack_irq(t);
+
 	timer_tick();
+
 	return IRQ_HANDLED;
 }
 
@@ -267,21 +271,18 @@ static struct irqaction lpc313x_timer_irq = {
 
 static void __init lpc313x_timer_init (void)
 {
-	/* Switch on needed Timer clocks & switch off others*/
-	cgu_clk_en_dis(CGU_SB_TIMER0_PCLK_ID, 1);
-	cgu_clk_en_dis(CGU_SB_TIMER1_PCLK_ID, 0);
-	cgu_clk_en_dis(CGU_SB_TIMER2_PCLK_ID, 0);
-	cgu_clk_en_dis(CGU_SB_TIMER3_PCLK_ID, 0);
-
-	/* Stop/disable all timers */
-	TIMER_CONTROL(TIMER0_PHYS) = 0;
-
-	TIMER_LOAD(TIMER0_PHYS) = LATCH;
-	TIMER_CONTROL(TIMER0_PHYS) = (TM_CTRL_ENABLE | TM_CTRL_PERIODIC);
-	TIMER_CLEAR(TIMER0_PHYS) = 0;
-	setup_irq (IRQ_TIMER0, &lpc313x_timer_irq);
+	struct lpc313x_timer *t;
 
 	lpc313x_generic_timer_init();
+
+	t = lpc313x_generic_timer_request("tick");
+
+	lpc313x_timer_irq.dev_id = t;
+
+	lpc313x_generic_timer_periodic(t, LATCH);
+
+	setup_irq (lpc313x_generic_timer_get_irq(t),
+		   &lpc313x_timer_irq);
 }
 
 
