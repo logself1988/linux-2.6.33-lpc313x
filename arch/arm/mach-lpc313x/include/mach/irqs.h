@@ -158,20 +158,21 @@
 #define IRQ_EVTR3_END          IRQ_EA_VBUS_OVRC
 
 #elif defined (CONFIG_MACH_LPC_H3131)
-
-# define NR_IRQ_BOARD         0
+# define IRQ_LPC_H3131_VBUS_OVRC     (IRQ_BOARD_START + 0) /* USB Vbus over-current */
+# define NR_IRQ_BOARD         1
 
 /* now define board irq to event pin map */
 #define BOARD_IRQ_EVENT_MAP	{ \
 	CHIP_IRQ_EVENT_MAP \
+	{IRQ_LPC_H3131_VBUS_OVRC, EVT_GPIO20, EVT_ACTIVE_LOW}, \
 	}
 /* Following defines group the board IRQs into 4 IRQ_EVNTR groups.
    IRQ_EVT_ROUTERx IRQ is generated when event in the corresponding 
    group triggers.
 */
 
-#define IRQ_EVTR1_START        0
-#define IRQ_EVTR1_END          0
+#define IRQ_EVTR1_START        IRQ_LPC_H3131_VBUS_OVRC
+#define IRQ_EVTR1_END          IRQ_LPC_H3131_VBUS_OVRC
 #define IRQ_EVTR2_START        0
 #define IRQ_EVTR2_END          0
 #define IRQ_EVTR3_START        0
