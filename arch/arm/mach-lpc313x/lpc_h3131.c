@@ -368,7 +368,7 @@ static void __init lpc_h3131_init(void)
 
 	lpc313x_gpiolib_init();
 
-	/* boot mode selector */
+	/* boot mode selector (weird order is correct!) */
 	gpio_request(0, "boot1");
 	gpio_direction_input(0);
 	gpio_export(0, 0);
@@ -379,7 +379,7 @@ static void __init lpc_h3131_init(void)
 	gpio_direction_input(1);
 	gpio_export(2, 0);
 
-	/* primary GPIO */
+	/* available gpio (labels indicate connector and pin) */
 	gpio_request(3, "ext2-21");
 	gpio_request(4, "ext2-20");
 	gpio_request(5, "ext2-19");
