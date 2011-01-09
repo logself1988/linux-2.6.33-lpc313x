@@ -16,6 +16,7 @@
 #include <linux/module.h>
 #include <linux/io.h>
 
+#include <mach/gpio.h>
 #include <mach/registers.h>
 
 struct lpc313x_gpio_chip {

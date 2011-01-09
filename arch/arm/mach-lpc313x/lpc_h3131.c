@@ -353,8 +353,6 @@ static struct map_desc lpc_h3131_io_desc[] __initdata = {
 static struct i2c_board_info lpc_h3131_i2c_devices[] __initdata = {
 };
 
-extern void __init lpc313x_gpiolib_init();
-
 static void __init lpc_h3131_init(void)
 {
 	lpc313x_init();
@@ -365,8 +363,6 @@ static void __init lpc_h3131_init(void)
 
 	i2c_register_board_info(0, lpc_h3131_i2c_devices,
 				ARRAY_SIZE(lpc_h3131_i2c_devices));
-
-	lpc313x_gpiolib_init();
 
 	/* boot mode selector (weird order is correct!) */
 	gpio_request(0, "boot1");

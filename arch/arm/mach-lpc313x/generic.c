@@ -195,21 +195,29 @@ extern int __init cgu_init(char *str);
 
 int __init lpc313x_init(void)
 {
-	/* cgu init */
+	/* Initialize clock generation unit */
 	cgu_init("");
-	/* Switch on the UART clocks */
+
+	/* Switch on the UART clocks (XXX: shouldn't the uart driver do this?) */
 	cgu_clk_en_dis(CGU_SB_UART_APB_CLK_ID, 1);
 	cgu_clk_en_dis(CGU_SB_UART_U_CLK_ID, 1);
+
+	/* Switch on the GPIO clock */
 	cgu_clk_en_dis(CGU_SB_IOCONF_PCLK_ID, 1);
 
 	/* Put adc block in low power state.
 	 * Once ADC driver is added this should move to driver.
 	 */
 	SYS_ADC_PD = 1;
-	/* Disable ring oscillators used by Random number generators */
+
+	/* Disable RNG ring oscillators.
+	 * Done to save power even if this was enabled for some reason.
+	 */
 	SYS_RNG_OSC_CFG = 0;
 
-	/* Mux I2S signals based on selected channel */
+	/* Mux I2S signals based on selected channel.
+	 * These are currently non-gpiolib pins.
+	 */
 #if defined (CONFIG_SND_I2S_TX0_MASTER)
 	/* I2S TX0 WS, DATA */
 	GPIO_DRV_IP(IOCONF_EBI_I2STX_0, 0x60);
@@ -217,12 +225,10 @@ int __init lpc313x_init(void)
 	/* I2S TX0 BCK */
 	GPIO_DRV_IP(IOCONF_EBI_MCI, 0x80);
 #endif
-
 #if defined (CONFIG_SND_I2S_TX1_MASTER)
 	/* I2S TX1 BCK, WS, DATA */
 	GPIO_DRV_IP(IOCONF_I2STX_1, 0x7);
 #endif
-
 #if defined (CONFIG_SND_I2S_RX0_MASTER) | defined (CONFIG_SND_I2S_RX0_SLAVE)
 	/* I2S RX0 BCK, WS, DATA */
 	GPIO_DRV_IP(IOCONF_I2SRX_0, 0x7);
@@ -234,6 +240,12 @@ int __init lpc313x_init(void)
 	/* AUDIO CODEC CLOCK (256FS) */
 	GPIO_DRV_IP(IOCONF_I2STX_1, 0x8);
 
+	/* Initialize gpiolib.
+	 */
+	lpc313x_gpiolib_init();
+
+	/* Add platform-specific devices.
+	 */
 	return platform_add_devices(devices, ARRAY_SIZE(devices));
 }
 

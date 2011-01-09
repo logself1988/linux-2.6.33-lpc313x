@@ -21,6 +21,7 @@
  *
  */
 #ifndef _LPC313X_GPIO_H
+#define _LPC313X_GPIO_H
 
 #include <mach/hardware.h>
 
@@ -141,6 +142,12 @@
 #define GPIO_UART_TXD         (IOCONF_UART | 1)
 
 
+/* gpiolib init function */
+
+extern void lpc313x_gpiolib_init(void);
+
+
+/* old-style gpio routines */
 
 static inline int lpc313x_gpio_direction_input(unsigned gpio)
 {
@@ -172,7 +179,6 @@ static inline int lpc313x_gpio_ip_driven(unsigned gpio)
 	return 0;
 }
 
-
 static inline int lpc313x_gpio_get_value(unsigned gpio)
 {
 	return (GPIO_STATE(gpio & GPIO_PORT_MASK) & (1 << (gpio & GPIO_PIN_MASK)));
@@ -196,6 +202,9 @@ static inline void lpc313x_gpio_set_value(unsigned gpio, int value)
 
 	raw_local_irq_restore(flags);
 }
+
+
+/* gpiolib fastpath and aliases */
 
 #define IOCONF_FAST_GPIO IOCONF_GPIO
 #define NUM_FAST_GPIO 15
