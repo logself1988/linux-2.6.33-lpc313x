@@ -620,7 +620,11 @@ static inline void cgu_soft_reset_module(CGU_MOD_ID_T modId)
 
   CGU_CFG->resetn_soft[modId] = CGU_CONFIG_SOFT_RESET;
 }
-
+/* enable / disable the requested clock in CGU */
+static inline int cgu_clk_is_enabled(CGU_CLOCK_ID_T clkid)
+{
+	return (CGU_SB->clk_pcr[clkid] | CGU_SB_PCR_RUN) ? 1 : 0;
+}
 
 /***********************************************************************
 * Enable/Disable frequency input to the selected base

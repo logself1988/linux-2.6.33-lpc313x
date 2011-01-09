@@ -95,10 +95,10 @@
 /***********************************************************************
  * Timer register definitions
  **********************************************************************/
-#define TIMER_LOAD(base)      __REG ((base) + 0x00)
-#define TIMER_VALUE(base)     __REG ((base) + 0x04)
-#define TIMER_CONTROL(base)   __REG ((base) + 0x08)
-#define TIMER_CLEAR(base)     __REG ((base) + 0x0c)
+#define TIMER_LOAD(base)      __REG (((unsigned int)base) + 0x00)
+#define TIMER_VALUE(base)     __REG (((unsigned int)base) + 0x04)
+#define TIMER_CONTROL(base)   __REG (((unsigned int)base) + 0x08)
+#define TIMER_CLEAR(base)     __REG (((unsigned int)base) + 0x0c)
 
 #define TM_CTRL_ENABLE    _BIT(7)
 #define TM_CTRL_MODE      _BIT(6)
