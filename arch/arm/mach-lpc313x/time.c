@@ -381,7 +381,6 @@ static void __init lpc313x_clockevents_init(void)
 
 static void __init lpc313x_timer_init (void)
 {
-	struct lpc313x_timer *t;
 	lpc313x_generic_timer_init();
 	lpc313x_clocksource_init();
 	lpc313x_clockevents_init();
