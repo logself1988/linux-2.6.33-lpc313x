@@ -300,7 +300,6 @@ static void __init lpc313x_clocksource_init(void)
 }
 
 /* Programmable periodic timer */
-#if 0
 
 static struct lpc313x_timer *clkevent_timer;
 
@@ -329,7 +328,7 @@ static struct clock_event_device clkevent = {
 	.name		= "clkevent",
 	.features       = CLOCK_EVT_FEAT_PERIODIC,
 	.rating         = 200,
-	.shift		= 8,
+	.shift		= 20,
 	.set_mode	= clkevent_set_mode,
 };
 
@@ -358,13 +357,9 @@ static void __init lpc313x_clockevents_init(void)
 	static char err1[] __initdata = KERN_ERR
 		"%s: failed to request timer\n";
 
-	printk("init clkevents\n");
-
 	t = lpc313x_generic_timer_request("clkevent");
 	if(!t)
 		printk(err1, clkevent.name);
-
-	printk("using timer %d\n", t->id);
 
 	clkevent_timer = t;
 
@@ -372,63 +367,24 @@ static void __init lpc313x_clockevents_init(void)
 
 	setup_irq(lpc313x_generic_timer_get_irq(t), &clkevent_irq);
 
-	printk("irq set!\n");
-
 	/* XXX: CGU is not initialized yet */
 	freq = 6000000; // lpc313x_generic_timer_get_infreq(t);
 
-	printk("freq %d\n", freq);
-
 	clkevent.mult = div_sc(freq, NSEC_PER_SEC, clkevent.shift);
-
-	printk("shift=%d mult=%d\n", clksource.shift, clksource.mult);
 
 	clkevent.cpumask = cpumask_of(0);
 
 	clockevents_register_device(&clkevent);
-
-	printk("registered!\n");
-}
-#endif
-
-static irqreturn_t tick_interrupt(int irq, void *dev_id)
-{
-	struct lpc313x_timer *t = (struct lpc313x_timer *)dev_id;
-
-	lpc313x_generic_timer_ack_irq(t);
-
-	timer_tick();
-
-	return IRQ_HANDLED;
 }
 
-static struct irqaction tick_irq = {
-	.name		= "tick",
-	.flags		= IRQF_DISABLED | IRQF_TIMER | IRQF_IRQPOLL,
-	.handler	= tick_interrupt,
-};
+
 
 static void __init lpc313x_timer_init (void)
 {
 	struct lpc313x_timer *t;
-
 	lpc313x_generic_timer_init();
-
-	t = lpc313x_generic_timer_request("tick");
-
-	lpc313x_generic_timer_periodic(t, LATCH);
-
-	tick_irq.dev_id = (void*)t;
-
-	setup_irq (lpc313x_generic_timer_get_irq(t),
-		   &tick_irq);
-
 	lpc313x_clocksource_init();
-
-#if 0
 	lpc313x_clockevents_init();
-#endif
-
 }
 
 struct sys_timer lpc313x_timer = {

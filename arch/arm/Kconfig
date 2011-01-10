@@ -732,6 +732,7 @@ config ARCH_LPC313X
 	bool "NXP LPC313X series"
 	select CPU_ARM926T
 	select GENERIC_TIME
+	select GENERIC_CLOCKEVENTS
 	select GENERIC_GPIO
 	select ARCH_REQUIRE_GPIOLIB
 	help
