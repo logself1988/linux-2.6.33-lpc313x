@@ -57,6 +57,8 @@ struct lpc313x_timer {
 	unsigned reserved:1;
 	/* timer currently allocated */
 	unsigned used:1;
+	/* timer undergoing oneshot operation */
+	unsigned oneshot:1;
 };
 
 #define TIMER_IO_SIZE (SZ_1K)
@@ -152,14 +154,25 @@ u32 lpc313x_generic_timer_get_value(struct lpc313x_timer *t)
 
 void lpc313x_generic_timer_periodic(struct lpc313x_timer *t, u32 period)
 {
+	t->oneshot = 0;
 	TIMER_CONTROL(t->phys_base) = 0;
 	TIMER_LOAD(t->phys_base) = period;
 	TIMER_CONTROL(t->phys_base) = TM_CTRL_ENABLE | TM_CTRL_PERIODIC;
 	TIMER_CLEAR(t->phys_base) = 0;
 }
 
+void lpc313x_generic_timer_oneshot(struct lpc313x_timer *t, u32 duration)
+{
+	t->oneshot = 1;
+	TIMER_CONTROL(t->phys_base) = 0;
+	TIMER_LOAD(t->phys_base) = duration;
+	TIMER_CONTROL(t->phys_base) = TM_CTRL_ENABLE | TM_CTRL_PERIODIC;
+	TIMER_CLEAR(t->phys_base) = 0;	
+}
+
 void lpc313x_generic_timer_continuous(struct lpc313x_timer *t)
 {
+	t->oneshot = 0;
 	TIMER_CONTROL(t->phys_base) = 0;
 	TIMER_CONTROL(t->phys_base) = TM_CTRL_ENABLE;
 	TIMER_CLEAR(t->phys_base) = 0;
@@ -297,6 +310,14 @@ static void __init lpc313x_clocksource_init(void)
 
 static struct lpc313x_timer *clkevent_timer;
 
+static int clkevent_set_next_event(unsigned long cycles,
+				   struct clock_event_device *evt)
+{
+	lpc313x_generic_timer_oneshot(clkevent_timer, cycles);
+
+	return 0;
+}
+
 static void clkevent_set_mode(enum clock_event_mode mode,
 			      struct clock_event_device *evt)
 {
@@ -309,7 +330,6 @@ static void clkevent_set_mode(enum clock_event_mode mode,
 		lpc313x_generic_timer_periodic(clkevent_timer, period);
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
-		BUG();
 		break;
 	case CLOCK_EVT_MODE_UNUSED:
 	case CLOCK_EVT_MODE_SHUTDOWN:
@@ -320,10 +340,11 @@ static void clkevent_set_mode(enum clock_event_mode mode,
 
 static struct clock_event_device clkevent = {
 	.name		= "clkevent",
-	.features       = CLOCK_EVT_FEAT_PERIODIC,
+	.features       = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
 	.rating         = 200,
 	.shift		= 20,
 	.set_mode	= clkevent_set_mode,
+	.set_next_event = clkevent_set_next_event,
 };
 
 static irqreturn_t clkevent_interrupt(int irq, void *dev_id)
@@ -332,6 +353,11 @@ static irqreturn_t clkevent_interrupt(int irq, void *dev_id)
 	struct clock_event_device *evt = &clkevent;
 
 	lpc313x_generic_timer_ack_irq(t);
+
+	if(t->oneshot) {
+		t->oneshot = 0;
+		lpc313x_generic_timer_stop(t);
+	}
 
 	evt->event_handler(evt);
 
@@ -365,6 +391,11 @@ static void __init lpc313x_clockevents_init(void)
 	freq = 6000000; // lpc313x_generic_timer_get_infreq(t);
 
 	clkevent.mult = div_sc(freq, NSEC_PER_SEC, clkevent.shift);
+
+	clkevent.max_delta_ns =
+		clockevent_delta2ns(0xffffffff, &clkevent);
+	clkevent.min_delta_ns =
+		clockevent_delta2ns(60, &clkevent); /* XXX cautious */
 
 	clkevent.cpumask = cpumask_of(0);
 
