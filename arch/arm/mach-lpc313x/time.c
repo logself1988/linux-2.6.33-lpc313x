@@ -91,10 +91,8 @@ void lpc313x_generic_timer_init(void)
 		TIMER_CONTROL(t->phys_base) = 0;
 		TIMER_CLEAR(t->phys_base) = 0;
 
-#if 0
 		/* disable clock again, will be enabled when allocated */
 		cgu_clk_en_dis(t->clk_id, 0);
-#endif
 	}
 }
 
@@ -108,10 +106,8 @@ struct lpc313x_timer *lpc313x_generic_timer_request(char *descr)
 		if(t->used)
 			continue;
 
-#if 0
 		/* enable the clock of the timer */
 		cgu_clk_en_dis(t->clk_id, 1);
-#endif
 
 		/* mark the timer as used */
 		t->used = 1;
@@ -128,9 +124,7 @@ void lpc313x_generic_timer_free(struct lpc313x_timer *t)
 {
 	TIMER_CONTROL(t->phys_base) = 0;
 
-#if 0
 	cgu_clk_en_dis(t->clk_id, 0);
-#endif
 
 	t->descr = NULL;
 	t->used = 0;
