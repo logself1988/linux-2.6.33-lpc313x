@@ -68,6 +68,8 @@
 #define RESET_MR1    (1 << 4)
 #define STOP_MR1     (1 << 5)
 
+#define TOGGLE_EMR1   	(3 << 6)
+
 static int nowayout = WATCHDOG_NOWAYOUT;
 static int heartbeat = DEFAULT_HEARTBEAT;
 
@@ -90,10 +92,12 @@ static void lpc313x_wdt_stop(struct lpc313x_wdt *wdt)
 	writel(TCR_RST, base + LPC313x_WDT_TCR);
 
 	/* Clear interrupts */
-	writel(INTR_M0 | INTR_M1, base + LPC313x_WDT_TCR);
+	writel(INTR_M1, base + LPC313x_WDT_TCR);
 	writel(0, base + LPC313x_WDT_MCR);
 	writel(0, base + LPC313x_WDT_PC);
 	writel(0, base + LPC313x_WDT_PR);
+
+	writel(0, base + LPC313x_WDT_EMR);
 
 	/* Bring counter out of reset */
 	writel(0, base + LPC313x_WDT_TCR);
@@ -108,8 +112,8 @@ static void lpc313x_wdt_start(struct lpc313x_wdt *wdt)
 	cgu_clk_en_dis(CGU_SB_WDOG_PCLK_ID, 1);
 	freq = cgu_get_clk_freq(CGU_SB_WDOG_PCLK_ID);
 	writel(freq - 1, base + LPC313x_WDT_PR);
-	writel(heartbeat, base + LPC313x_WDT_MR0);
-	writel(INTEN_MR0 | STOP_MR0, base + LPC313x_WDT_MCR);
+	writel(heartbeat, base + LPC313x_WDT_MR1);
+	writel(TOGGLE_EMR1, base + LPC313x_WDT_EMR);
 
 	/* Start WDT */
 	writel(TCR_EN, base + LPC313x_WDT_TCR);
@@ -185,6 +189,7 @@ static long lpc313x_wdt_ioctl(struct file *file, unsigned int cmd,
 	int ret = -ENOTTY;
 	int time;
 	struct lpc313x_wdt *wdt = &lpc313x_wdt;
+	void __iomem *base = wdt->base;
 
 	switch (cmd) {
 	case WDIOC_GETSUPPORT:
@@ -219,6 +224,7 @@ static long lpc313x_wdt_ioctl(struct file *file, unsigned int cmd,
 		}
 
 		heartbeat = time;
+		writel(heartbeat, base + LPC313x_WDT_MR1);
 		lpc313x_wdt_keepalive(wdt);
 		dev_vdbg(wdt->dev, "Timeout set to: %d\n", time);
 		/* Fall through */
