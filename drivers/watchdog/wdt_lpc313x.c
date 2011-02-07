@@ -236,7 +236,10 @@ static int lpc313x_wdt_release(struct inode *inode, struct file *file)
 	if (!test_bit(WDT_OK_TO_CLOSE, &wdt->status))
 		dev_warn(wdt->dev, "Watchdog timer closed unexpectedly\n");
 
-	lpc313x_wdt_stop(wdt);
+	if (!nowayout) {
+		lpc313x_wdt_stop(wdt);
+	}
+
 	clear_bit(WDT_IN_USE, &wdt->status);
 	clear_bit(WDT_OK_TO_CLOSE, &wdt->status);
 
