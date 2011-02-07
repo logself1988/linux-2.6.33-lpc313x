@@ -39,6 +39,11 @@
 #define WDT_IN_USE        0
 #define WDT_OK_TO_CLOSE   1
 
+/* Set when a watchdog reset has occurred (read only). 
+ * This bit is cleared only by a power on reset.
+ */
+#define LPC313x_WD_BARK      (0x13004C04)
+
 /* Offset of WDT registers */
 #define LPC313x_WDT_IR       0x00
 #define LPC313x_WDT_TCR      0x04
@@ -289,7 +294,7 @@ static int lpc313x_wdt_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, wdt);
 
 	wdt->boot_status =
-	    (readl((void __iomem *)io_p2v(CGU_SB_PHYS)) & 0x1) ?
+	    (readl((void __iomem *)io_p2v(LPC313x_WD_BARK)) & 0x1) ?
 	    WDIOF_CARDRESET : 0;
 	lpc313x_wdt_stop(wdt);
 	dev_info(&pdev->dev, "Watchdog device driver initialized.\n");
