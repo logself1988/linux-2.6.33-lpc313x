@@ -66,18 +66,17 @@
 static int nowayout = WATCHDOG_NOWAYOUT;
 static int heartbeat = DEFAULT_HEARTBEAT;
 
-static struct lpc313x_wdt
-{
+static struct lpc313x_wdt {
 	spinlock_t lock;
-	void __iomem * base;
+	void __iomem *base;
 	unsigned long status;
 	unsigned long boot_status;
-	struct device * dev;
-}lpc313x_wdt;
+	struct device *dev;
+} lpc313x_wdt;
 
-static void lpc313x_wdt_stop(struct lpc313x_wdt * wdt)
+static void lpc313x_wdt_stop(struct lpc313x_wdt *wdt)
 {
-	void __iomem * base = wdt->base;
+	void __iomem *base = wdt->base;
 
 	/* Disable watchdog clock */
 	cgu_clk_en_dis(CGU_SB_WDOG_PCLK_ID, 0);
@@ -95,15 +94,15 @@ static void lpc313x_wdt_stop(struct lpc313x_wdt * wdt)
 	writel(0, base + LPC313x_WDT_TCR);
 }
 
-static void lpc313x_wdt_start(struct lpc313x_wdt * wdt)
+static void lpc313x_wdt_start(struct lpc313x_wdt *wdt)
 {
 	uint32_t freq;
-	void __iomem * base = wdt->base;
+	void __iomem *base = wdt->base;
 
 	/* Enable WDOG_PCLK and get its frequency */
 	cgu_clk_en_dis(CGU_SB_WDOG_PCLK_ID, 1);
 	freq = cgu_get_clk_freq(CGU_SB_WDOG_PCLK_ID);
-	writel(freq-1, base + LPC313x_WDT_PR);
+	writel(freq - 1, base + LPC313x_WDT_PR);
 	writel(heartbeat, base + LPC313x_WDT_MR0);
 	writel(INTEN_MR0 | STOP_MR0, base + LPC313x_WDT_MCR);
 
@@ -111,9 +110,9 @@ static void lpc313x_wdt_start(struct lpc313x_wdt * wdt)
 	writel(TCR_EN, base + LPC313x_WDT_TCR);
 }
 
-static void lpc313x_wdt_keepalive(struct lpc313x_wdt * wdt)
+static void lpc313x_wdt_keepalive(struct lpc313x_wdt *wdt)
 {
-	void __iomem * base = wdt->base;
+	void __iomem *base = wdt->base;
 	writel(0, base + LPC313x_WDT_PC);
 	writel(0, base + LPC313x_WDT_TC);
 }
@@ -138,14 +137,14 @@ static int lpc313x_wdt_open(struct inode *inode, struct file *file)
 	clear_bit(WDT_OK_TO_CLOSE, &wdt->status);
 
 	/*
-	 *	Activate
+	 *      Activate
 	 */
 	lpc313x_wdt_start(wdt);
 	return nonseekable_open(inode, file);
 }
 
 static ssize_t lpc313x_wdt_write(struct file *file, const char *data,
-					size_t len, loff_t *ppos)
+				 size_t len, loff_t * ppos)
 {
 	struct lpc313x_wdt *wdt = &lpc313x_wdt;
 	if (len) {
@@ -176,11 +175,11 @@ static const struct watchdog_info ident = {
 };
 
 static long lpc313x_wdt_ioctl(struct file *file, unsigned int cmd,
-				unsigned long arg)
+			      unsigned long arg)
 {
 	int ret = -ENOTTY;
 	int time;
-	struct lpc313x_wdt * wdt = &lpc313x_wdt;
+	struct lpc313x_wdt *wdt = &lpc313x_wdt;
 
 	switch (cmd) {
 	case WDIOC_GETSUPPORT:
@@ -209,7 +208,7 @@ static long lpc313x_wdt_ioctl(struct file *file, unsigned int cmd,
 
 		if (time <= 0 || time > MAX_HEARTBEAT) {
 			dev_err(wdt->dev, "Timeout value should be an "
-					"integer between 1 to %d\n", MAX_HEARTBEAT);
+				"integer between 1 to %d\n", MAX_HEARTBEAT);
 			ret = -EINVAL;
 			break;
 		}
@@ -228,7 +227,7 @@ static long lpc313x_wdt_ioctl(struct file *file, unsigned int cmd,
 
 static int lpc313x_wdt_release(struct inode *inode, struct file *file)
 {
-	struct lpc313x_wdt * wdt = &lpc313x_wdt;
+	struct lpc313x_wdt *wdt = &lpc313x_wdt;
 	if (!test_bit(WDT_OK_TO_CLOSE, &wdt->status))
 		dev_warn(wdt->dev, "Watchdog timer closed unexpectedly\n");
 
@@ -240,25 +239,25 @@ static int lpc313x_wdt_release(struct inode *inode, struct file *file)
 }
 
 static const struct file_operations lpc313x_wdt_fops = {
-	.owner 		= THIS_MODULE,
-	.llseek		= no_llseek,
-	.unlocked_ioctl	= lpc313x_wdt_ioctl,
-	.open 		= lpc313x_wdt_open,
-	.write 		= lpc313x_wdt_write,
-	.release 	= lpc313x_wdt_release,
+	.owner = THIS_MODULE,
+	.llseek = no_llseek,
+	.unlocked_ioctl = lpc313x_wdt_ioctl,
+	.open = lpc313x_wdt_open,
+	.write = lpc313x_wdt_write,
+	.release = lpc313x_wdt_release,
 };
 
 static struct miscdevice lpc313x_wdt_misc = {
-	.minor 	= WATCHDOG_MINOR,
-	.name 	= "watchdog",
-	.fops 	= &lpc313x_wdt_fops,
+	.minor = WATCHDOG_MINOR,
+	.name = "watchdog",
+	.fops = &lpc313x_wdt_fops,
 };
 
 static int lpc313x_wdt_probe(struct platform_device *pdev)
 {
 	int ret;
-	struct resource * res;
-	struct lpc313x_wdt * wdt = &lpc313x_wdt;
+	struct resource *res;
+	struct lpc313x_wdt *wdt = &lpc313x_wdt;
 	uint32_t size;
 
 	spin_lock_init(&wdt->lock);
@@ -270,15 +269,15 @@ static int lpc313x_wdt_probe(struct platform_device *pdev)
 	}
 
 	size = res->end - res->start + 1;
-	if(devm_request_mem_region(&pdev->dev, 
-			res->start, size, pdev->name) == NULL) {
-		dev_err (&pdev->dev, "Requested memory region unavailable\n");
+	if (devm_request_mem_region(&pdev->dev,
+				    res->start, size, pdev->name) == NULL) {
+		dev_err(&pdev->dev, "Requested memory region unavailable\n");
 		return -EBUSY;
 	}
 
 	wdt->base = devm_ioremap(&pdev->dev, res->start, size);
 	if (wdt->base == NULL) {
-		dev_err (&pdev->dev, "Unable to remap memory region\n");
+		dev_err(&pdev->dev, "Unable to remap memory region\n");
 		return -ENOMEM;
 	}
 
@@ -289,8 +288,9 @@ static int lpc313x_wdt_probe(struct platform_device *pdev)
 	}
 	platform_set_drvdata(pdev, wdt);
 
-	wdt->boot_status = (readl((void __iomem *) io_p2v(CGU_SB_PHYS)) & 0x1) ?
-		WDIOF_CARDRESET : 0;
+	wdt->boot_status =
+	    (readl((void __iomem *)io_p2v(CGU_SB_PHYS)) & 0x1) ?
+	    WDIOF_CARDRESET : 0;
 	lpc313x_wdt_stop(wdt);
 	dev_info(&pdev->dev, "Watchdog device driver initialized.\n");
 	return 0;
@@ -298,7 +298,7 @@ static int lpc313x_wdt_probe(struct platform_device *pdev)
 
 static int lpc313x_wdt_remove(struct platform_device *pdev)
 {
-	struct lpc313x_wdt * wdt = &lpc313x_wdt;
+	struct lpc313x_wdt *wdt = &lpc313x_wdt;
 
 	/* Stop the hardware */
 	lpc313x_wdt_stop(wdt);
@@ -312,9 +312,9 @@ static struct platform_driver lpc313x_wdt_driver = {
 	.probe = lpc313x_wdt_probe,
 	.remove = __devexit_p(lpc313x_wdt_remove),
 	.driver = {
-		.owner = THIS_MODULE,
-		.name = "lpc313x-wdt",
-	},
+		   .owner = THIS_MODULE,
+		   .name = "lpc313x-wdt",
+		   },
 };
 
 static int __init lpc313x_wdt_init(void)
