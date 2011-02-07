@@ -70,7 +70,6 @@ static struct lpc313x_wdt
 {
 	spinlock_t lock;
 	void __iomem * base;
-	int irq;
 	unsigned long status;
 	unsigned long boot_status;
 	struct device * dev;
@@ -255,37 +254,6 @@ static struct miscdevice lpc313x_wdt_misc = {
 	.fops 	= &lpc313x_wdt_fops,
 };
 
-/**
- *	lpc313x_wdt_isr:
- *	@irq:		Interrupt number
- *	@dev_id:	Unused as we don't allow multiple devices.
- *
- *	Handle an interrupt from the board. These are raised when the status
- *	map changes in what the board considers an interesting way. That means
- *	a failure condition occurring.
- */
-
-static irqreturn_t lpc313x_wdt_isr(int irq, void *dev_id)
-{
-	/*
-	 *	Read the status register see what is up and
-	 *	then printk it.
-	 */
-	uint32_t status;
-	struct lpc313x_wdt * wdt = &lpc313x_wdt;
-
-	spin_lock(&wdt->lock);
-	status = readl(wdt->base + LPC313x_WDT_IR);
-
-	dev_vdbg(wdt->dev, "WDT status %d\n", status);
-
-	dev_crit(wdt->dev, "WDT timedout\n");
-
-	writel(status, wdt->base + LPC313x_WDT_IR);
-	spin_unlock(&wdt->lock);
-	return IRQ_HANDLED;
-}
-
 static int lpc313x_wdt_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -295,12 +263,6 @@ static int lpc313x_wdt_probe(struct platform_device *pdev)
 
 	spin_lock_init(&wdt->lock);
 	wdt->dev = &pdev->dev;
-	wdt->irq = platform_get_irq(pdev, 0);
-	if (wdt->irq < 0) {
-		dev_err(&pdev->dev, "No IRQ resource found\n");
-		return -ENXIO;
-	}
-
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL) {
 		dev_err(&pdev->dev, "Unable to get resources.\n");
@@ -318,13 +280,6 @@ static int lpc313x_wdt_probe(struct platform_device *pdev)
 	if (wdt->base == NULL) {
 		dev_err (&pdev->dev, "Unable to remap memory region\n");
 		return -ENOMEM;
-	}
-
-	ret = devm_request_irq(&pdev->dev, wdt->irq, lpc313x_wdt_isr, 
-			IRQF_DISABLED, pdev->name, NULL);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "Unable to request IRQ%d\n", wdt->irq);
-		return ret;
 	}
 
 	ret = misc_register(&lpc313x_wdt_misc);
