@@ -372,7 +372,7 @@ static void __init lpc_h3131_init(void)
 	gpio_direction_input(1);
 	gpio_export(1, 0);
 	gpio_request(2, "boot2");
-	gpio_direction_input(1);
+	gpio_direction_input(2);
 	gpio_export(2, 0);
 
 	/* available gpio (labels indicate connector and pin) */
