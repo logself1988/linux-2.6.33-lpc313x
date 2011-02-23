@@ -29,14 +29,14 @@ struct lpc313x_gpio_chip {
 static int lpc313x_gpiolib_request(struct gpio_chip *chip, unsigned offset);
 static void lpc313x_gpiolib_free(struct gpio_chip *chip, unsigned offset);
 static int lpc313x_gpiolib_direction_input(struct gpio_chip *chip,
-											unsigned offset);
+					   unsigned offset);
 static int lpc313x_gpiolib_direction_output(struct gpio_chip *chip,
-											unsigned offset, int val);
+					    unsigned offset, int val);
 static int lpc313x_gpiolib_get(struct gpio_chip *chip, unsigned offset);
 static void lpc313x_gpiolib_set(struct gpio_chip *chip,
-								unsigned offset, int val);
+				unsigned offset, int val);
 static void lpc313x_gpiolib_dbg_show(struct seq_file *s,
-										struct gpio_chip *chip);
+				     struct gpio_chip *chip);
 
 #define LPC313X_GPIO_CHIP(name, basereg, base_gpio, nr_gpio)      \
     {                                                             \
@@ -97,7 +97,7 @@ static void lpc313x_gpiolib_free(struct gpio_chip *chip, unsigned offset)
 }
 
 static int lpc313x_gpiolib_direction_input(struct gpio_chip *chip,
-		unsigned offset)
+					   unsigned offset)
 {
 	struct lpc313x_gpio_chip *pchip = to_lpc313x_gpio_chip(chip);
 	unsigned long flags;
@@ -115,8 +115,8 @@ static int lpc313x_gpiolib_direction_input(struct gpio_chip *chip,
 }
 
 static int lpc313x_gpiolib_direction_output(struct gpio_chip *chip,
-		unsigned offset,
-		int value)
+					    unsigned offset,
+					    int value)
 {
 	struct lpc313x_gpio_chip *pchip = to_lpc313x_gpio_chip(chip);
 	unsigned long flags;
@@ -152,8 +152,8 @@ static int lpc313x_gpiolib_get(struct gpio_chip *chip, unsigned offset)
 }
 
 static void lpc313x_gpiolib_set(struct gpio_chip *chip,
-		unsigned offset,
-		int value)
+				unsigned offset,
+				int value)
 {
 	struct lpc313x_gpio_chip *pchip = to_lpc313x_gpio_chip(chip);
 	unsigned long flags;
