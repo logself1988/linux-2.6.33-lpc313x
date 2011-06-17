@@ -1367,9 +1367,8 @@ lpc313x_mci_init_slot(struct lpc313x_mci *host, int id, struct lpc313x_mci_slot_
 		host->pdata->setpower(id, 0);
 
 	mmc->caps = MMC_CAP_SDIO_IRQ;
-	if (host->pdata->get_bus_wd)
-		if (host->pdata->get_bus_wd(slot->id) >= 4)
-			mmc->caps |= MMC_CAP_4_BIT_DATA;
+	if (slot_data->bus_width >= 4)
+		mmc->caps |= MMC_CAP_4_BIT_DATA;
 
 	mmc->max_phys_segs = 64;
 	mmc->max_hw_segs = 64;
