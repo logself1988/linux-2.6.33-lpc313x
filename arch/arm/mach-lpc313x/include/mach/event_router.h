@@ -160,6 +160,8 @@ typedef enum _EVT_TYPE_
   EVT_LAST
 } EVENT_T;
 
+#define NR_EVT 126
+
 /* External interrupt type enumerations */
 typedef enum
 {
