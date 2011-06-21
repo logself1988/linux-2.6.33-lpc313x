@@ -287,7 +287,7 @@ arch_initcall(lpc313x_spimtd_register);
 #endif
 #endif
 
-#ifdef CONFIG_LEDS_GPIO
+#ifdef CONFIG_LEDS_GPIO_PLATFORM
 static struct gpio_led leds[] = {
     {
 	.name   = "led-1:yellow",
