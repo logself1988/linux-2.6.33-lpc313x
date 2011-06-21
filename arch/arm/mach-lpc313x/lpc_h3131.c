@@ -252,6 +252,22 @@ static struct platform_device lpc313x_spi_device = {
 };
 
 /* If both SPIDEV and MTD data flash are enabled with the same chip select, only 1 will work */
+#if defined(CONFIG_MTD_DATAFLASH)
+/* MTD Data FLASH driver registration */
+static int __init lpc313x_spimtd_register(void)
+{
+	struct spi_board_info info = {
+		.modalias = "mtd_dataflash",
+		.max_speed_hz = 30000000,
+		.bus_num = 0,
+		.chip_select = 0,
+	};
+
+	return spi_register_board_info(&info, 1);
+}
+
+arch_initcall(lpc313x_spimtd_register);
+#else
 #if defined(CONFIG_SPI_SPIDEV)
 /* SPIDEV driver registration */
 static int __init lpc313x_spidev_register(void)
@@ -268,23 +284,8 @@ static int __init lpc313x_spidev_register(void)
 
 arch_initcall(lpc313x_spidev_register);
 #endif
-
-#if defined(CONFIG_MTD_DATAFLASH)
-/* MTD Data FLASH driver registration */
-static int __init lpc313x_spimtd_register(void)
-{
-	struct spi_board_info info = {
-		.modalias = "mtd_dataflash",
-		.max_speed_hz = 30000000,
-		.bus_num = 0,
-		.chip_select = 0,
-	};
-
-	return spi_register_board_info(&info, 1);
-}
-
-arch_initcall(lpc313x_spimtd_register);
 #endif
+
 #endif
 
 #ifdef CONFIG_LEDS_GPIO_PLATFORM
