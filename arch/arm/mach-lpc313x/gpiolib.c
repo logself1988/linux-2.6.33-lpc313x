@@ -62,9 +62,6 @@ static struct lpc313x_gpio_chip gpio_chips[] = {
 		/* first chip is required for fast gpio support (XXX explain in detail) */
 		LPC313X_GPIO_CHIP("GPIO",        IOCONF_GPIO,         0, 15),
 		LPC313X_GPIO_CHIP("EBI_MCI",     IOCONF_EBI_MCI,     15, 32),
-
-		/* boards that need more should enable chips below */
-#if 0
 		LPC313X_GPIO_CHIP("EBI_I2STX_0", IOCONF_EBI_I2STX_0, 47, 10),
 		LPC313X_GPIO_CHIP("CGU",         IOCONF_CGU,         57,  1),
 		LPC313X_GPIO_CHIP("I2SRX_0",     IOCONF_I2SRX_0,     58,  3),
@@ -76,7 +73,6 @@ static struct lpc313x_gpio_chip gpio_chips[] = {
 		LPC313X_GPIO_CHIP("NAND_CTRL",   IOCONF_NAND_CTRL,   91,  4),
 		LPC313X_GPIO_CHIP("PWM",         IOCONF_PWM,         95,  1),
 		LPC313X_GPIO_CHIP("UART",        IOCONF_UART,        96,  2),
-#endif
 };
 
 static int lpc313x_gpiolib_request(struct gpio_chip *chip, unsigned offset)
@@ -202,10 +198,10 @@ static void lpc313x_gpiolib_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 
 			seq_printf(s, "[%s] %s%d: ", gpio_label, chip->label, i);
 
-			if(mode0) {
-				seq_printf(s, "output %s\n", mode1 ? "high" : "low");
+			if(mode1) {
+				seq_printf(s, "output %s\n", mode0 ? "high" : "low");
 			} else {
-				if(mode1) {
+				if(mode0) {
 					seq_printf(s, "device function\n");
 				} else {
 					seq_printf(s, "input %s\n", state ? "high" : "low");

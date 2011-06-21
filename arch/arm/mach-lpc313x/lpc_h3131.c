@@ -45,11 +45,19 @@
 #include <mach/i2c.h>
 #include <mach/board.h>
 
+
+#define SPI_CS_GPIO GPIO_SPI_CS_OUT0
+#define USB_VBUS_GPIO GPIO_GPIO19
+#define MCI_POWER_GPIO GPIO_MI2STX_DATA0
+
+
+/* MMC interface */
+
 static int mci_init(u32 slot_id)
 {
-
-	/* enable power to the slot */
-	lpc313x_gpio_set_value(GPIO_MI2STX_DATA0, 0);
+	/* enable as output and power the slot */
+	gpio_request(MCI_POWER_GPIO, "mci-power");
+	gpio_direction_output(MCI_POWER_GPIO, 0);
 
 	return 0;
 }
@@ -103,6 +111,9 @@ static struct platform_device lpc313x_mci_device = {
 		},
 	.resource = lpc313x_mci_resources,
 };
+
+
+/* NAND interface */
 
 #if defined (CONFIG_MTD_NAND_LPC313X)
 static struct resource lpc313x_nand_resources[] = {
@@ -201,7 +212,11 @@ static struct platform_device lpc313x_nand_device = {
 };
 #endif
 
+
+/* SPI controller */
+
 #if defined(CONFIG_SPI_LPC313X)
+
 static struct resource lpc313x_spi_resources[] = {
 	[0] = {
 	       .start = SPI_PHYS,
@@ -221,7 +236,7 @@ static void spi_set_cs_state(int cs_num, int state)
 	(void)cs_num;
 
 	/* Set GPO state for CS0 */
-	lpc313x_gpio_set_value(GPIO_SPI_CS_OUT0, state);
+	gpio_set_value(SPI_CS_GPIO, state);
 }
 
 struct lpc313x_spics_cfg lpc313x_stdspics_cfg[] = {
@@ -288,6 +303,9 @@ arch_initcall(lpc313x_spidev_register);
 
 #endif
 
+
+/* GPIO LEDs */
+
 #ifdef CONFIG_LEDS_GPIO_PLATFORM
 static struct gpio_led leds[] = {
     {
@@ -314,6 +332,9 @@ static struct platform_device led_device = {
     },
 };
 #endif
+
+
+/* Platform device list */
 
 static struct platform_device *devices[] __initdata = {
 #if defined (CONFIG_LEDS_GPIO_PLATFORM)
@@ -357,6 +378,15 @@ static struct i2c_board_info lpc_h3131_i2c_devices[] __initdata = {
 static void __init lpc_h3131_init(void)
 {
 	lpc313x_init();
+
+#if defined(CONFIG_SPI_LPC313X)
+	gpio_request(SPI_CS_GPIO, "spi-cs0");
+	gpio_direction_output(SPI_CS_GPIO, 1);
+#endif
+
+	gpio_request(USB_VBUS_GPIO, "usb-vbus");
+	gpio_direction_output(USB_VBUS_GPIO, 0);
+
 	/* register i2cdevices */
 	lpc313x_register_i2c_devices();
 
@@ -396,11 +426,9 @@ static void __init lpc_h3131_map_io(void)
 void lpc313x_vbus_power(int enable)
 {
 	if (enable) {
-		//printk(KERN_INFO "enabling USB host vbus_power\n");
-		lpc313x_gpio_set_value(GPIO_GPIO19, 0);
+		gpio_set_value(USB_VBUS_GPIO, 0);
 	} else {
-		//printk(KERN_INFO "disabling USB host vbus_power\n");
-		lpc313x_gpio_set_value(GPIO_GPIO19, 1);
+		gpio_set_value(USB_VBUS_GPIO, 1);
 	}
 }
 
