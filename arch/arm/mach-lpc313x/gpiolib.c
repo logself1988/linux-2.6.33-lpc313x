@@ -24,6 +24,9 @@ struct lpc313x_gpio_chip {
 	void __iomem     *regbase;
 };
 
+struct lpc313x_gpio_pin {
+};
+
 #define to_lpc313x_gpio_chip(c) container_of(c, struct lpc313x_gpio_chip, chip)
 
 static int lpc313x_gpiolib_request(struct gpio_chip *chip, unsigned offset);
@@ -56,12 +59,12 @@ static void lpc313x_gpiolib_dbg_show(struct seq_file *s,
     }
 
 static struct lpc313x_gpio_chip gpio_chips[] = {
-		/* first chip is required */
+		/* first chip is required for fast gpio support (XXX explain in detail) */
 		LPC313X_GPIO_CHIP("GPIO",        IOCONF_GPIO,         0, 15),
+		LPC313X_GPIO_CHIP("EBI_MCI",     IOCONF_EBI_MCI,     15, 32),
 
 		/* boards that need more should enable chips below */
 #if 0
-		LPC313X_GPIO_CHIP("EBI_MCI",     IOCONF_EBI_MCI,     15, 32),
 		LPC313X_GPIO_CHIP("EBI_I2STX_0", IOCONF_EBI_I2STX_0, 47, 10),
 		LPC313X_GPIO_CHIP("CGU",         IOCONF_CGU,         57,  1),
 		LPC313X_GPIO_CHIP("I2SRX_0",     IOCONF_I2SRX_0,     58,  3),
