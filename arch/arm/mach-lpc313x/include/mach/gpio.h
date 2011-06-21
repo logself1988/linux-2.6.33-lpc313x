@@ -73,9 +73,6 @@
 
 #define GPIO_PWM_DATA         (IOCONF_PWM | 0)
 
-#define GPIO_UART_RXD         (IOCONF_UART | 0)
-#define GPIO_UART_TXD         (IOCONF_UART | 1)
-
 #endif
 
 
@@ -159,6 +156,13 @@
 #define GPIO_SPI_CS_IN        (BASE_GPIO_SPI + 2)
 #define GPIO_SPI_SCK          (BASE_GPIO_SPI + 3)
 #define GPIO_SPI_CS_OUT0      (BASE_GPIO_SPI + 4)
+
+
+#define BASE_GPIO_UART 96
+#define NUM_GPIO_UART 2
+
+#define GPIO_UART_RXD         (BASE_GPIO_UART + 0)
+#define GPIO_UART_TXD         (BASE_GPIO_UART + 1)
 
 
 /* gpiolib init function */
