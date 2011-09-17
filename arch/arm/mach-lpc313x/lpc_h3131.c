@@ -24,7 +24,6 @@
 #include <linux/device.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
-#include <linux/dm9000.h>
 #include <linux/i2c.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
@@ -46,8 +45,11 @@
 #include <mach/board.h>
 
 
-#define SPI_CS_GPIO GPIO_SPI_CS_OUT0
+#define SPI_CS0_GPIO GPIO_SPI_CS_OUT0
+#define SPI_CS1_GPIO 3
+
 #define USB_VBUS_GPIO GPIO_GPIO19
+
 #define MCI_POWER_GPIO GPIO_MI2STX_DATA0
 
 
@@ -232,11 +234,23 @@ static struct resource lpc313x_spi_resources[] = {
 
 static void spi_set_cs_state(int cs_num, int state)
 {
+	int gpio;
+
 	/* Only CS0 is supported, so no checks are needed */
 	(void)cs_num;
 
-	/* Set GPO state for CS0 */
-	gpio_set_value(SPI_CS_GPIO, state);
+	/* Select pin */
+	switch(cs_num) {
+	case 0:
+		gpio = SPI_CS0_GPIO;
+		break;
+	case 1:
+		gpio = SPI_CS1_GPIO;
+		break;
+	}
+
+	/* Set GPO state for CS */
+	gpio_set_value(gpio, state);
 }
 
 struct lpc313x_spics_cfg lpc313x_stdspics_cfg[] = {
@@ -246,6 +260,12 @@ struct lpc313x_spics_cfg lpc313x_stdspics_cfg[] = {
 	       .spi_sph = 0,	/* Data capture on first clock edge (high edge with spi_spo=0) */
 	       .spi_cs_set = spi_set_cs_state,
 	       },
+	/* SPI CS1 */
+	[1] = {
+		   .spi_spo = 0,	/* Low clock between transfers */
+		   .spi_sph = 1,	/* Data capture on first clock edge (high edge with spi_spo=0) */
+		   .spi_cs_set = spi_set_cs_state,
+		   },
 };
 
 struct lpc313x_spi_cfg lpc313x_spidata = {
@@ -301,6 +321,22 @@ arch_initcall(lpc313x_spidev_register);
 #endif
 #endif
 
+#if defined(CONFIG_RTC_DRV_DS3234)
+static int __init lpc313x_rtcdev_register(void)
+{
+	struct spi_board_info info = {
+		.modalias = "ds3234",
+		.max_speed_hz = 1000000,
+		.bus_num = 0,
+		.chip_select = 1,
+	};
+
+	return spi_register_board_info(&info, 1);
+}
+
+arch_initcall(lpc313x_rtcdev_register);
+#endif
+
 #endif
 
 
@@ -338,9 +374,9 @@ static struct platform_device led_device = {
 
 static struct platform_device *devices[] __initdata = {
 #if defined (CONFIG_LEDS_GPIO_PLATFORM)
-        &led_device,
+    &led_device,
 #endif
-        &lpc313x_mci_device,
+    &lpc313x_mci_device,
 #if defined (CONFIG_MTD_NAND_LPC313X)
 	&lpc313x_nand_device,
 #endif
@@ -380,8 +416,10 @@ static void __init lpc_h3131_init(void)
 	lpc313x_init();
 
 #if defined(CONFIG_SPI_LPC313X)
-	gpio_request(SPI_CS_GPIO, "spi-cs0");
-	gpio_direction_output(SPI_CS_GPIO, 1);
+	gpio_request(SPI_CS0_GPIO, "spi-cs0");
+	gpio_direction_output(SPI_CS0_GPIO, 1);
+	gpio_request(SPI_CS1_GPIO, "spi-cs1");
+	gpio_direction_output(SPI_CS1_GPIO, 1);
 #endif
 
 	gpio_request(USB_VBUS_GPIO, "usb-vbus");
@@ -407,7 +445,7 @@ static void __init lpc_h3131_init(void)
 	gpio_export(2, 0);
 
 	/* available gpio (labels indicate connector and pin) */
-	gpio_request(3, "ext2-21");
+	//gpio_request(3, "ext2-21");
 	gpio_request(4, "ext2-20");
 	gpio_request(5, "ext2-19");
 	gpio_request(6, "ext2-18");
