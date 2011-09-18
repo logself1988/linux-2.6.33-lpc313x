@@ -197,7 +197,27 @@ void __init lpc313x_map_io(void)
 {
 	iotable_init(lpc313x_io_desc, ARRAY_SIZE(lpc313x_io_desc));
 }
+
 extern int __init cgu_init(char *str);
+
+
+#define GPIO_BOOT0 GPIO_GPIO0
+#define GPIO_BOOT1 GPIO_GPIO1
+#define GPIO_BOOT2 GPIO_GPIO2
+
+static void lpc313x_export_bootsel(void) {
+	/* pre-request and export boot mode selector pins */
+	gpio_request(GPIO_BOOT0, "boot0");
+	gpio_direction_input(GPIO_BOOT0);
+	gpio_export(GPIO_BOOT0, 0);
+	gpio_request(GPIO_BOOT1, "boot1");
+	gpio_direction_input(GPIO_BOOT1);
+	gpio_export(GPIO_BOOT1, 0);
+	gpio_request(GPIO_BOOT2, "boot2");
+	gpio_direction_input(GPIO_BOOT2);
+	gpio_export(GPIO_BOOT2, 0);
+}
+
 
 int __init lpc313x_init(void)
 {
@@ -241,6 +261,8 @@ int __init lpc313x_init(void)
 	GPIO_DRV_IP(IOCONF_I2STX_1, 0x8);
 
 	lpc313x_gpiolib_init();
+
+	lpc313x_export_bootsel();
 
 	return platform_add_devices(devices, ARRAY_SIZE(devices));
 }
