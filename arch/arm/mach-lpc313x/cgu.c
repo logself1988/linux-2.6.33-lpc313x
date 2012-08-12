@@ -717,7 +717,7 @@ static const struct file_operations lpc313x_cgu_clocks_fops = {
 	.release	= single_release,
 };
 
-static void lpc313x_cgu_init_debugfs(void)
+void __init lpc313x_cgu_init_debugfs(void)
 {
 	struct dentry		*node;
 
@@ -728,15 +728,12 @@ static void lpc313x_cgu_init_debugfs(void)
 
 	return;
 }
-#else
-static void lpc313x_cgu_init_debugfs(void) {}
 #endif
 /***********************************************************************
 * Initialize CGU data structure with PLL frequency passed by the boot 
 * loader.
 **********************************************************************/
-void lpc313x_timer_init_debugfs(void);
-int __init cgu_init(char *str)
+int __init cgu_init(void)
 {
 	int i, j;
 	u32 flags;
@@ -770,16 +767,9 @@ int __init cgu_init(char *str)
 	g_clkin_freq[4] = 0;
 	g_clkin_freq[5] = cgu_get_pll_freq(CGU_HPLL0_ID, FFAST_CLOCK);
 	g_clkin_freq[6] = cgu_get_pll_freq(CGU_HPLL1_ID, FFAST_CLOCK);
- 	printk(/*KERN_INFO*/ "cgu_init pll set at %d\n", g_clkin_freq[6]);
-	
-	lpc313x_cgu_init_debugfs();
-
-	lpc313x_timer_init_debugfs();
-
 
 	return 0;
 }
-
 
 EXPORT_SYMBOL(cgu_get_base_freq);
 EXPORT_SYMBOL(cgu_set_base_freq);

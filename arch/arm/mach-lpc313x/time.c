@@ -246,7 +246,7 @@ static const struct file_operations lpc313x_timers_fops = {
 	.release	= single_release,
 };
 
-void lpc313x_timer_init_debugfs(void)
+void __init lpc313x_timer_init_debugfs(void)
 {
 	struct dentry		*node;
 
@@ -258,8 +258,6 @@ void lpc313x_timer_init_debugfs(void)
 
 	return;
 }
-#else
-void lpc313x_timer_init_debugfs(void) {}
 #endif
 
 /* Continuous timer counter */
@@ -296,8 +294,7 @@ static void __init lpc313x_clocksource_init(void)
 
 	clksource_timer = t;
 
-	/* XXX: CGU is not initialized yet */
-	freq = 6000000; //lpc313x_generic_timer_get_infreq(t);
+	freq = lpc313x_generic_timer_get_infreq(t);
 
 	clksource.mult = clocksource_hz2mult(freq, clksource.shift);
 
@@ -327,7 +324,7 @@ static void clkevent_set_mode(enum clock_event_mode mode,
 
 	switch (mode) {
 	case CLOCK_EVT_MODE_PERIODIC:
-		period = /*lpc313x_generic_timer_get_infreq(clkevent_timer)*/ 6000000 / HZ;
+		period = lpc313x_generic_timer_get_infreq(clkevent_timer) / HZ;
 		lpc313x_generic_timer_periodic(clkevent_timer, period);
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
@@ -388,8 +385,7 @@ static void __init lpc313x_clockevents_init(void)
 
 	setup_irq(lpc313x_generic_timer_get_irq(t), &clkevent_irq);
 
-	/* XXX: CGU is not initialized yet */
-	freq = 6000000; // lpc313x_generic_timer_get_infreq(t);
+	freq = lpc313x_generic_timer_get_infreq(t);
 
 	clkevent.mult = div_sc(freq, NSEC_PER_SEC, clkevent.shift);
 
@@ -403,11 +399,15 @@ static void __init lpc313x_clockevents_init(void)
 	clockevents_register_device(&clkevent);
 }
 
-
+extern int __init cgu_init(void);
 
 static void __init lpc313x_timer_init (void)
 {
+	/* We need to have clocks set up, so init the CGU here. */
+	cgu_init();
+	/* Initialize platform timers */
 	lpc313x_generic_timer_init();
+	/* Set up kernel timers */
 	lpc313x_clocksource_init();
 	lpc313x_clockevents_init();
 }

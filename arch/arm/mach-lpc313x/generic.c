@@ -198,8 +198,6 @@ void __init lpc313x_map_io(void)
 	iotable_init(lpc313x_io_desc, ARRAY_SIZE(lpc313x_io_desc));
 }
 
-extern int __init cgu_init(char *str);
-
 
 #define GPIO_BOOT0 GPIO_GPIO0
 #define GPIO_BOOT1 GPIO_GPIO1
@@ -218,11 +216,13 @@ static void lpc313x_export_bootsel(void) {
 	gpio_export(GPIO_BOOT2, 0);
 }
 
+#if defined (CONFIG_DEBUG_FS)
+extern void lpc313x_cgu_init_debugfs(void);
+extern void lpc313x_timer_init_debugfs(void);
+#endif
 
 int __init lpc313x_init(void)
 {
-	/* cgu init */
-	cgu_init("");
 	/* Switch on the UART clocks */
 	cgu_clk_en_dis(CGU_SB_UART_APB_CLK_ID, 1);
 	cgu_clk_en_dis(CGU_SB_UART_U_CLK_ID, 1);
@@ -263,6 +263,11 @@ int __init lpc313x_init(void)
 	lpc313x_gpiolib_init();
 
 	lpc313x_export_bootsel();
+
+#if defined (CONFIG_DEBUG_FS)
+	lpc313x_cgu_init_debugfs();
+	lpc313x_timer_init_debugfs();
+#endif
 
 	return platform_add_devices(devices, ARRAY_SIZE(devices));
 }
