@@ -10,6 +10,7 @@ obj-y			+= irq.o time.o cgu.o generic.o i2c.o dma.o usb.o wdt.o
 # Specific board support
 obj-$(CONFIG_MACH_VAL3153) += val3153.o leds.o
 obj-$(CONFIG_MACH_LPC_H3131) += lpc_h3131.o
+obj-$(CONFIG_MACH_GNUBLIN) += gnublin.o
 obj-$(CONFIG_MACH_EA313X) += ea313x.o leds-pca9532.o
 obj-$(CONFIG_MACH_EA3152) += ea313x.o leds-pca9532.o
 obj-$(CONFIG_MACH_VAL3154) += val3154.o leds.o

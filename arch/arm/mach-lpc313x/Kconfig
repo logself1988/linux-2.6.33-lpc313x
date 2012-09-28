@@ -10,6 +10,11 @@ config MACH_LPC_H3131
 	help
 	  Say Y here if you are using the Olimex LPC-H3131 board
 
+config MACH_GNUBLIN
+    bool "gnublin board"
+    help
+      Say Y here if you are using the Embedded Projects GNUBLIN board
+
 config MACH_EA313X
 	bool "ea313x board"
 	help
